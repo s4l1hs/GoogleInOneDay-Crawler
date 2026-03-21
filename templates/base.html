@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Crawler UI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="ambient-bg" aria-hidden="true"></div>
+  <div class="float-orb orb-a" aria-hidden="true"></div>
+  <div class="float-orb orb-b" aria-hidden="true"></div>
+  <header class="top-nav">
+    <div class="brand">Crawler 🕷️</div>
+    <nav>
+      <a href="{{ url_for('crawler_page') }}">Crawler</a>
+      <a href="{{ url_for('status_page') }}">Status</a>
+      <a href="{{ url_for('search_page') }}">Search</a>
+    </nav>
+  </header>
+
+  <main class="page-shell">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

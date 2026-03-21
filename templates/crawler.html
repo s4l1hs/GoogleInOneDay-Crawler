@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Crawler Jobs{% endblock %}
+
+{% block content %}
+<section class="panel hero-panel">
+  <h1>Launch a Crawl Session</h1>
+  <p>Compose a focused crawl with deliberate depth and adaptive queue control.</p>
+</section>
+
+<section class="panel two-col">
+  <div class="sub-panel">
+    <div class="panel-head-row">
+      <h2>New Session</h2>
+      <form method="post" action="{{ url_for('crawler_page') }}" id="clearForm" class="corner-action-form">
+        <input type="hidden" name="action" value="clear" />
+        <button type="submit" class="btn btn-danger corner-action-btn">🗑️ Clear Crawler Data</button>
+      </form>
+    </div>
+    <form method="post" action="{{ url_for('crawler_page') }}" id="crawlerForm">
+      <input type="hidden" name="action" value="start" />
+
+      <label for="origin">Origin URL</label>
+      <input id="origin" name="origin" placeholder="https://example.com" required />
+
+      <label for="depth">Depth</label>
+      <input id="depth" name="depth" type="number" value="1" min="0" />
+
+      <label for="hit_rate">Hit Rate (requests/sec)</label>
+      <input id="hit_rate" name="hit_rate" type="number" step="0.1" value="5.0" min="0.1" />
+
+      <label for="queue_capacity">Queue Capacity</label>
+      <input id="queue_capacity" name="queue_capacity" type="number" value="500" min="10" />
+
+      <button type="submit" class="btn btn-primary">Start Crawler</button>
+    </form>
+
+    {% if started_id %}
+      <p class="ok">Started crawler: <strong>{{ started_id }}</strong></p>
+      <p><a href="{{ url_for('status_page', crawler_id=started_id) }}">Open status page</a></p>
+    {% endif %}
+    {% if clear_message %}
+      <p class="ok">{{ clear_message }}</p>
+    {% endif %}
+    {% if error %}
+      <p class="err">{{ error }}</p>
+    {% endif %}
+    {% if clear_error %}
+      <p class="err">{{ clear_error }}</p>
+    {% endif %}
+  </div>
+
+  <div class="sub-panel">
+    <h2>Guide</h2>
+    <ul class="plain-list">
+      <li>Keep hit rate low for fragile targets.</li>
+      <li>Increase queue capacity only if your machine can handle it.</li>
+      <li>Open Status page right after start for live logs.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Crawler History</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Crawler ID</th>
+          <th>Origin</th>
+          <th>State</th>
+          <th>Indexed</th>
+          <th>Queue</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in history %}
+          <tr>
+            <td>{{ row.crawler_id }}</td>
+            <td class="origin-cell">{{ row.origin }}</td>
+            <td>
+              {% if row.state == 'finished' %}<span class="ok">finished</span>
+              {% elif row.state == 'interrupted' %}<span class="err">interrupted</span>
+              {% else %}<span class="warn">{{ row.state }}</span>{% endif %}
+            </td>
+            <td>{{ row.pages_indexed }}</td>
+            <td>{{ row.queue_size }}</td>
+            <td>{{ row.updated_at }}</td>
+            <td><a href="{{ url_for('status_page', crawler_id=row.crawler_id) }}">View</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">No crawler history found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/crawler.js') }}"></script>
+{% endblock %}

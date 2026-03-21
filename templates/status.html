@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Crawler Status{% endblock %}
+
+{% block content %}
+<section class="panel hero-panel">
+  <h1>Live Crawler Status</h1>
+  <p>Real-time stream for queue metrics, page counters, and crawler logs.</p>
+</section>
+
+<section class="panel">
+  <label for="crawlerId" class="label-strong">Crawler ID</label>
+  <div class="inline-form">
+    <input id="crawlerId" value="{{ crawler_id }}" placeholder="Enter Crawler ID (e.g. [171101...])" />
+    <button id="watchBtn" class="btn btn-primary">Watch / Refresh</button>
+  </div>
+</section>
+
+<section class="panel">
+  <div id="stateLine" class="state-line">State: <strong>unknown</strong></div>
+  <div class="metric-grid">
+    <div class="metric-card">Pages Processed: <strong id="pagesProcessed">0</strong></div>
+    <div class="metric-card">Pages Indexed: <strong id="pagesIndexed">0</strong></div>
+    <div class="metric-card">Pages Failed: <strong id="pagesFailed">0</strong></div>
+    <div class="metric-card">Visited Count: <strong id="visitedCount">0</strong></div>
+    <div class="metric-card">Queue Depth: <strong id="queueSize">0</strong></div>
+    <div class="metric-card">Back-pressure: <strong id="backPressure">unknown</strong></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>State Logs</h2>
+  <div id="logs" class="logs">Waiting for logs...</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/status.js') }}"></script>
+{% endblock %}

@@ -13,9 +13,12 @@ A lightweight, thread-safe web crawler and search engine built with Python, nati
   - `/search` for query and paginated results.
 
 ## Project Structure
+- `main.py`: Flask backend entrypoint and endpoint implementations.
 - `crawler_job.py`: crawler job lifecycle, extraction, indexing, logging snapshots.
 - `search_module.py`: query parsing, shard reads, ranking, pagination.
-- `web_ui.py`: Flask backend + HTML/JS pages for crawler/status/search.
+- `templates/*.html`: Jinja templates for crawler, status, and search pages.
+- `static/css/styles.css`: shared modern UI styling.
+- `static/js/*.js`: page-specific frontend scripts.
 - `product_prd.md`: system architecture and requirements.
 - `.cursorrules`: implementation constraints for thread safety and native-library-first behavior.
 
@@ -31,7 +34,7 @@ If needed, install Flask:
 ## Start the Application
 From the project root:
 ```bash
-/opt/homebrew/bin/python3.11 web_ui.py
+/opt/homebrew/bin/python3.11 main.py
 ```
 
 Then open:
