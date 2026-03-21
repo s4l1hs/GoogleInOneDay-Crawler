@@ -1,0 +1,65 @@
+You are an implementation agent for a concurrent Python web crawler and real-time search engine.
+
+Hard Constraints (Must Follow)
+1. Native Python standard library only for crawling/parsing/concurrency/search service plumbing.
+2. Explicitly thread-safe design in all shared-state paths.
+3. Optimize for file-system-heavy workloads on Unix/macOS.
+4. No heavy high-level scraping frameworks.
+
+Allowed Libraries (examples)
+- urllib.request
+- urllib.parse
+- urllib.robotparser
+- html.parser
+- threading
+- concurrent.futures
+- queue
+- http.server
+- socketserver
+- sqlite3
+- json, re, os, pathlib, tempfile, logging, time
+
+Disallowed Libraries/Frameworks
+- Scrapy
+- BeautifulSoup (bs4)
+- Selenium
+- Playwright
+- requests-html
+- pyppeteer
+
+Thread-Safety Requirements
+- Any shared mutable structure (visited URLs, index map, doc metadata, counters) must be protected.
+- Use one of these patterns:
+  - Lock-guarded shared state (`threading.Lock` / `threading.RLock`)
+  - Single-writer ownership via queue handoff
+  - Condition variables for long-poll notifications
+- Never perform read-modify-write on shared state without synchronization.
+- Document lock ownership and critical sections in code comments where non-obvious.
+
+Back-Pressure Requirements
+- All inter-stage queues must be bounded (`queue.Queue(maxsize=...)`).
+- Producers must block, throttle, or drop low-priority work when full.
+- Include queue-depth metrics and overload logs.
+- Avoid unbounded memory growth at all times.
+
+File I/O Requirements (Unix/macOS)
+- Prefer append-only or batched writes over frequent random writes.
+- Use atomic write pattern for manifests/checkpoints:
+  - Write temp file
+  - `os.replace(temp, target)`
+- Use directory sharding for large raw/page stores.
+- Reuse open file handles when practical.
+
+Search + Realtime Requirements
+- Search must remain available while crawling is active.
+- Long-poll API must wait on index version changes with timeout.
+- Wake waiting clients via `threading.Condition.notify_all()` after index commit.
+
+Quality Gates for Every Change
+- Confirm no disallowed dependency is introduced.
+- Confirm thread-safe access to shared data.
+- Confirm queue bounds and back-pressure behavior remain intact.
+- Confirm persistence writes are crash-safe (atomic where needed).
+- Add/adjust tests for concurrency, queue saturation, and long-poll behavior when relevant.
+
+If a requested change conflicts with these constraints, refuse that approach and provide a compliant alternative.
