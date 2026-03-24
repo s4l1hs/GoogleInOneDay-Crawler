@@ -23,17 +23,21 @@
           <th>Relevant URL</th>
           <th>Origin URL</th>
           <th>Depth</th>
+          <th>Frequency</th>
+          <th>Relevance Score</th>
         </tr>
       </thead>
       <tbody>
         {% for row in data.results %}
           <tr>
-            <td><a href="{{ row[0] }}" target="_blank" rel="noopener noreferrer">{{ row[0] }}</a></td>
-            <td><a href="{{ row[1] }}" target="_blank" rel="noopener noreferrer">{{ row[1] }}</a></td>
-            <td>{{ row[2] }}</td>
+            <td><a href="{{ row.url }}" target="_blank" rel="noopener noreferrer">{{ row.url }}</a></td>
+            <td><a href="{{ row.origin_url }}" target="_blank" rel="noopener noreferrer">{{ row.origin_url }}</a></td>
+            <td>{{ row.depth }}</td>
+            <td>{{ row.frequency }}</td>
+            <td>{{ row.relevance_score }}</td>
           </tr>
         {% else %}
-          <tr><td colspan="3">No results.</td></tr>
+          <tr><td colspan="5">No results.</td></tr>
         {% endfor %}
       </tbody>
     </table>

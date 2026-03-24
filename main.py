@@ -321,6 +321,22 @@ def status_poll() -> object:
 
 @app.route("/search")
 def search_page() -> object:
+    query_api = (request.args.get("query") or "").strip()
+    sort_by = (request.args.get("sortBy") or "relevance").strip().lower()
+
+    if query_api:
+        page = max(1, int(request.args.get("page", "1")))
+        page_size = max(1, min(100, int(request.args.get("page_size", "20"))) )
+        engine = SearchEngine(storage_dir=STORAGE_DIR)
+        return jsonify(
+            engine.search_api(
+                query=query_api,
+                sort_by=sort_by,
+                page=page,
+                page_size=page_size,
+            )
+        )
+
     q = (request.args.get("q") or "").strip()
     page = max(1, int(request.args.get("page", "1")))
     page_size = max(1, min(100, int(request.args.get("page_size", "20"))))
@@ -336,7 +352,12 @@ def search_page() -> object:
 
     if q:
         engine = SearchEngine(storage_dir=STORAGE_DIR)
-        results_payload = engine.search(query=q, page=page, page_size=page_size)
+        results_payload = engine.search_api(
+            query=q,
+            sort_by="relevance",
+            page=page,
+            page_size=page_size,
+        )
 
     return render_template("search.html", data=results_payload)
 

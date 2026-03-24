@@ -85,6 +85,80 @@ class SearchEngine:
         payload = self.search(query=query, page=page, page_size=page_size)
         return payload["results"]  # type: ignore[return-value]
 
+    def search_api(
+        self,
+        query: str,
+        sort_by: str = "relevance",
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Dict[str, object]:
+        """JSON-friendly API payload with frequency and relevance score."""
+        terms = self._parse_query(query)
+        safe_page_size = max(1, int(page_size))
+        if not terms:
+            return {
+                "query": query,
+                "sortBy": sort_by,
+                "page": 1,
+                "page_size": safe_page_size,
+                "total": 0,
+                "total_pages": 0,
+                "results": [],
+            }
+
+        ranked = self._rank_for_terms(terms)
+        rows: List[Dict[str, object]] = []
+        for item in ranked:
+            rows.append(
+                {
+                    "url": item.relevant_url,
+                    "origin_url": item.origin_url,
+                    "depth": item.depth,
+                    "frequency": item.score,
+                    "relevance_score": self._relevance_score(item.score, item.depth),
+                }
+            )
+
+        sort_key = (sort_by or "relevance").strip().lower()
+        if sort_key == "frequency":
+            rows.sort(key=lambda row: (-int(row["frequency"]), int(row["depth"]), str(row["url"])))
+        else:
+            rows.sort(
+                key=lambda row: (
+                    -int(row["relevance_score"]),
+                    -int(row["frequency"]),
+                    int(row["depth"]),
+                    str(row["url"]),
+                )
+            )
+
+        total = len(rows)
+        if total == 0:
+            return {
+                "query": query,
+                "sortBy": sort_key,
+                "page": 1,
+                "page_size": safe_page_size,
+                "total": 0,
+                "total_pages": 0,
+                "results": [],
+            }
+
+        total_pages = (total + safe_page_size - 1) // safe_page_size
+        safe_page = max(1, min(int(page), total_pages))
+        start = (safe_page - 1) * safe_page_size
+        end = start + safe_page_size
+
+        return {
+            "query": query,
+            "sortBy": sort_key,
+            "page": safe_page,
+            "page_size": safe_page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "results": rows[start:end],
+        }
+
     def _parse_query(self, query: str) -> List[str]:
         terms = [term.lower() for term in _WORD_RE.findall(query)]
         # Keep insertion order while removing duplicates.
@@ -149,6 +223,11 @@ class SearchEngine:
     def _candidate_shards(self, terms: Set[str]) -> List[Path]:
         buckets = {self._bucket_for_word(term) for term in terms if term}
         return [self.storage_dir / f"{bucket}.data" for bucket in sorted(buckets)]
+
+    @staticmethod
+    def _relevance_score(frequency: int, depth: int) -> int:
+        # Assignment-aligned scoring formula.
+        return (int(frequency) * 10) + 1000 - (int(depth) * 5)
 
     @staticmethod
     def _bucket_for_word(word: str) -> str:
