@@ -1,99 +1,48 @@
-# Concurrent Crawler + Real-Time Search (Python)
+# GoogleInOneDay-Crawler (Project 2)
 
-A lightweight, thread-safe web crawler and search engine built with Python, native libraries for crawling/indexing, and a minimal Flask UI.
+Filesystem-sharded crawler and search system with concurrent indexing/search, asyncio watermark back-pressure, and resumable checkpoints.
 
-## What This Project Includes
-- Recursive crawler jobs with configurable depth, hit rate, and queue capacity.
-- Thread-safe visited URL tracking persisted to `visited_urls.data`.
-- File-backed inverted index sharded by first-letter buckets in `storage/[letter].data`.
-- Concurrent-safe search module with pagination and frequency-based ranking.
-- Web UI endpoints:
-  - `/crawler` to start jobs and view crawl history.
-  - `/status` for long-polling status/log streaming.
-  - `/search` for query and paginated results.
+## Features
+- Recursive crawl: `index(origin, k)` behavior.
+- Real-time `search(query)` while indexing is active.
+- Sharded JSONL inverted index in `storage/*.data`.
+- High/low watermark back-pressure (80% / 20%).
+- Periodic checkpoint persistence for resume in `crawler_states/*.data`.
 
-## Project Structure
-- `main.py`: Flask backend entrypoint and endpoint implementations.
-- `crawler_job.py`: crawler job lifecycle, extraction, indexing, logging snapshots.
-- `search_module.py`: query parsing, shard reads, ranking, pagination.
-- `templates/*.html`: Jinja templates for crawler, status, and search pages.
-- `static/css/styles.css`: shared modern UI styling.
-- `static/js/*.js`: page-specific frontend scripts.
-- `product_prd.md`: system architecture and requirements.
-- `.cursorrules`: implementation constraints for thread safety and native-library-first behavior.
+## Storage Model
+- `a.data` ... `z.data` for alphabetic-leading tokens.
+- `num.data` for digit-leading tokens.
+- `other.data` for remaining tokens.
+- JSONL fields per row: `word`, `origin_url`, `current_url`, `depth`, `frequency`, `ts`.
 
-## Prerequisites
-- Python 3.11+
-- Flask installed in the active environment
-
-If needed, install Flask:
+## Run
 ```bash
-/opt/homebrew/bin/python3.11 -m pip install flask
+python main.py
 ```
 
-## Start the Application
-From the project root:
-```bash
-/opt/homebrew/bin/python3.11 main.py
-```
-
-Then open:
+Open:
 - `http://127.0.0.1:8000/crawler`
 - `http://127.0.0.1:8000/status`
 - `http://127.0.0.1:8000/search`
 
-## Initiate Indexing (Crawler Job)
-1. Open `/crawler`.
-2. Enter:
-   - Origin URL (seed URL)
-   - Depth (recursive crawl limit)
-   - Hit Rate (requests/sec)
-   - Queue Capacity (frontier queue max size)
-3. Click **Start Crawler**.
-4. You will get a crawler ID in format `[EpochTimeCreated_ThreadID]` and can open `/status?crawler_id=...`.
+## Back-Pressure Rules
+- Discovery pauses when frontier queue is >= 80% full.
+- Discovery resumes when frontier queue is <= 20% full.
+- Status logs include back-pressure activation/release entries.
 
-## Monitor Real-Time Status
-Use `/status` and provide/select a crawler ID.
+## Search During Indexing
+- Search opens shard files read-only.
+- Indexer appends rows under per-shard write locks.
+- Search ignores partial/corrupt trailing JSONL rows safely.
 
-The page uses **long polling** (`/status/poll`) to continuously fetch updates from the crawler state file `crawler_states/[crawlerId].data`.
+## Resumability
+- State snapshots persist visited URLs and frontier queue.
+- If a non-finished checkpoint for the same origin exists, the crawler resumes from it.
 
-Displayed metrics:
-- pages processed
-- pages indexed
-- pages failed
-- visited count
-- queue depth
-- back-pressure status (`normal` or `active`)
-- live log stream
-
-Job state transitions are shown clearly as `running`, `finished`, or `interrupted`.
-
-## Perform Searches
-1. Open `/search`.
-2. Submit a query string.
-3. The backend reads only relevant index shards based on query terms.
-4. Results are ranked by aggregated frequency (max hits first).
-5. Output rows are triples: `(relevant_url, origin_url, depth)`.
-6. Use pagination controls (`Prev`/`Next`) to navigate pages.
-
-## Concurrency Model
-- Crawler runs in a dedicated thread per job.
-- Shared mutable state is protected with synchronization primitives (`threading.Lock`).
-- Search can run while indexing is active by using the same index-file lock for reads/writes, reducing read/write race risks.
-- State snapshots are atomically written to avoid partial status-file corruption.
-
-## Back-Pressure Behavior
-To avoid overload and unbounded memory growth:
-- Frontier queue is bounded (`queue_capacity`).
-- Producer-side enqueue throttles when queue occupancy is high.
-- Additional adaptive delays are applied when queue depth crosses thresholds.
-- Back-pressure events are logged and surfaced in the `/status` page.
-
-## Data Outputs
-- `visited_urls.data`: persistent visited URL list.
-- `storage/*.data`: sharded inverted index JSONL records.
-- `crawler_states/[crawlerId].data`: continuous crawler status snapshot.
-
-## Notes
-- This is a local, lightweight system for educational and prototyping use.
-- For production-scale evolution, see `recommendation.md`.
+## Main Files
+- `main.py`: Flask routes and UI integration.
+- `crawler_job.py`: Async crawler/indexer with checkpoints and watermarks.
+- `search_module.py`: Query parsing, shard scanning, ranking, pagination.
+- `product_prd.md`: Requirements and architecture.
+- `multi_agent_workflow.md`: Team workflow and decision log.
+- `recommendation.md`: Production scaling recommendations.

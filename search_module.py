@@ -10,12 +10,9 @@ from __future__ import annotations
 
 import json
 import re
-import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set, Tuple
-
-from crawler_job import INDEX_FILE_LOCK
+from typing import Dict, Iterable, List, Set, Tuple
 
 _WORD_RE = re.compile(r"[A-Za-z0-9]+")
 
@@ -29,9 +26,8 @@ class SearchItem:
 
 
 class SearchEngine:
-    def __init__(self, storage_dir: str = "storage", read_lock: Optional[threading.Lock] = None) -> None:
+    def __init__(self, storage_dir: str = "storage") -> None:
         self.storage_dir = Path(storage_dir)
-        self.read_lock = read_lock or INDEX_FILE_LOCK
 
     def search(
         self,
@@ -176,35 +172,34 @@ class SearchEngine:
         for shard_path in candidate_files:
             if not shard_path.exists():
                 continue
-            with self.read_lock:
-                with shard_path.open("r", encoding="utf-8") as fh:
-                    for raw in fh:
-                        line = raw.strip()
-                        if not line:
-                            continue
-                        try:
-                            row = json.loads(line)
-                        except json.JSONDecodeError:
-                            # Tolerate occasional partially written/corrupt lines.
-                            continue
+            with shard_path.open("r", encoding="utf-8") as fh:
+                for raw in fh:
+                    line = raw.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        # Read-only search tolerates trailing partial writes while indexer appends.
+                        continue
 
-                        word = str(row.get("word", "")).lower()
-                        if word not in term_set:
-                            continue
+                    word = str(row.get("word", "")).lower()
+                    if word not in term_set:
+                        continue
 
-                        relevant_url = str(row.get("current_url", ""))
-                        origin_url = str(row.get("origin_url", ""))
-                        depth = int(row.get("depth", 0))
-                        frequency = int(row.get("frequency", 0))
-                        if not relevant_url or not origin_url or frequency <= 0:
-                            continue
+                    relevant_url = str(row.get("current_url", row.get("relevant_url", "")))
+                    origin_url = str(row.get("origin_url", ""))
+                    depth = int(row.get("depth", 0))
+                    frequency = int(row.get("frequency", 0))
+                    if not relevant_url or not origin_url or frequency <= 0:
+                        continue
 
-                        scores[relevant_url] = scores.get(relevant_url, 0) + frequency
+                    scores[relevant_url] = scores.get(relevant_url, 0) + frequency
 
-                        # Keep stable origin and smallest known depth for same URL.
-                        if relevant_url not in origins:
-                            origins[relevant_url] = origin_url
-                        depths[relevant_url] = min(depths.get(relevant_url, depth), depth)
+                    # Keep stable origin and smallest known depth for same URL.
+                    if relevant_url not in origins:
+                        origins[relevant_url] = origin_url
+                    depths[relevant_url] = min(depths.get(relevant_url, depth), depth)
 
         ranked = [
             SearchItem(
